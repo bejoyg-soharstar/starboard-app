@@ -184,6 +184,13 @@ interface TimesheetRow {
   created_at?: string | null;
 }
 
+const isHolidayOrWeekendRecord = (row: TimesheetRow): boolean => {
+  const status = row.status?.trim().toLowerCase();
+  const remarks = row.remarks?.trim().toLowerCase();
+  return (status === 'holiday' && remarks === 'holiday') ||
+    (status === 'weekend' && remarks === 'weekend');
+};
+
 type SourceFilter = 'ALL' | 'MANUAL' | 'LEAVE_LOG' | 'DEVICE' | 'NO_SOURCE';
 
 const getYesterdayString = () => {
@@ -504,12 +511,14 @@ const TimesheetRowComponent = memo(({
   }, [row.status, row.remarks, row.original_in_punch, row.original_out_punch]);
 
   const hasNoRedBorders = useMemo(() => {
+    const isHolidayOrWeekend = isHolidayOrWeekendRecord(row);
+
     // 1. Status check
     const isStatusRed = !row.status || row.status === 'no status';
     if (isStatusRed) return false;
 
     // 2. Project & Punch check (only when status is not absent/no status)
-    if (row.status !== 'absent' && row.status !== 'no status') {
+    if (!isHolidayOrWeekend && row.status !== 'absent' && row.status !== 'no status') {
       const isProjectRed = !row.project_code || row.project_code === '' || row.project_code === 'UNASSIGNED';
       if (isProjectRed) return false;
 
@@ -2092,7 +2101,7 @@ export default function TimesheetFinalizer({
     if (!currentRow) return;
 
     const isMachineLoggedComplete = !!currentRow.original_in_punch && !!currentRow.original_out_punch;
-    const isRowVerified = currentRow.isVerified || !!currentRow.verified_by || isMachineLoggedComplete || resolvedMode === 'approve';
+    const isRowVerified = isHolidayOrWeekendRecord(currentRow) || currentRow.isVerified || !!currentRow.verified_by || isMachineLoggedComplete || resolvedMode === 'approve';
     if (!isRowVerified) {
       toast.error(`Cannot approve ${currentRow.employee_name}. Timesheet must be verified first.`);
       return;
@@ -2209,8 +2218,9 @@ export default function TimesheetFinalizer({
     const checkRowValidity = (r: TimesheetRow): boolean => {
       // 1. Status check
       if (!r.status || r.status === 'no status') return false;
-      if (!r.status || r.status === 'holiday') return true;
-      if (!r.status || r.status === 'weekend') return true;
+      if (r.status === 'holiday' || r.status === 'weekend') {
+        return isHolidayOrWeekendRecord(r);
+      }
       // 2. Project & Punch check (only when status is not absent/no status)
       if (r.status !== 'absent' && r.status !== 'no status') {
         const isProjectRed = !r.project_code || r.project_code === '' || r.project_code === 'UNASSIGNED';
@@ -2243,12 +2253,13 @@ export default function TimesheetFinalizer({
         const isUserFocal = isFocalFiltered || focalProjectCodes.length > 0 || isDual;
         const isUserApprover = resolvedMode === 'approve' || isApproverFiltered || approverProjectCodes.length > 0 || isDual;
         const isDualUserOrProj = isDual || (isUserFocal && isUserApprover);
+        const isHolidayOrWeekend = isHolidayOrWeekendRecord(r);
 
-        const verifiedBy = (r.isVerified || r.isEdited || !!r.verified_by || resolvedMode === 'verify' || isUserFocal)
+        const verifiedBy = (isHolidayOrWeekend || r.isVerified || r.isEdited || !!r.verified_by || resolvedMode === 'verify' || isUserFocal)
           ? (r.verified_by || userData?.email || dbFields.verified_by || null)
           : null;
 
-        const approvedBy = (r.isApproved || !!r.approved_by || isDualUserOrProj || resolvedMode === 'approve' || resolvedMode === 'finalize')
+        const approvedBy = (isHolidayOrWeekend || r.isApproved || !!r.approved_by || isDualUserOrProj || resolvedMode === 'approve' || resolvedMode === 'finalize')
           ? (r.approved_by || userData?.email || null)
           : null;
 
@@ -2268,6 +2279,7 @@ export default function TimesheetFinalizer({
             ? ((r.remarks || '').substring(8).trim() || null)
             : ((r.remarks || '').trim() || null),
           status: r.status || null,
+          ...(isHolidayOrWeekend ? { approval: true } : {}),
           last_updated: new Date().toISOString(),
         });
       } else {
@@ -2453,7 +2465,7 @@ export default function TimesheetFinalizer({
       if (statusVal === 'weekend' || statusVal === 'holiday') {
         updated.isVerified = true;
         updated.verified_by = userData?.email || 'System';
-        updated.remarks = statusVal;
+        updated.remarks = statusVal === 'holiday' ? 'Holiday' : 'Weekend';
       }
     }
 
@@ -2635,7 +2647,7 @@ export default function TimesheetFinalizer({
             }
           } else if (statusVal === 'holiday' || statusVal === 'weekend') {
           // Update remarks to match status for holiday/weekend
-          updated.remarks = statusVal;
+          updated.remarks = statusVal === 'holiday' ? 'Holiday' : 'Weekend';
           updated.isVerified = true;
           updated.verified_by = userData?.email || 'System';
           }         
@@ -2985,7 +2997,8 @@ export default function TimesheetFinalizer({
       }
 
       const hasMissingPunchTimes = Object.values(rows).some(r => {
-        return (r.status === 'present' || r.status === 'present with OT') && (!r.punch_in || !r.punch_out);
+        return !isHolidayOrWeekendRecord(r) &&
+          (r.status === 'present' || r.status === 'present with OT') && (!r.punch_in || !r.punch_out);
       });
 
       if (hasMissingPunchTimes) {
@@ -3007,12 +3020,13 @@ export default function TimesheetFinalizer({
           const isDual = isProjectDualRole(empProjCode, projects, userData?.email);
           const isUserFocal = isFocalFiltered || focalProjectCodes.length > 0 || isDual;
           const isUserApprover = resolvedMode === 'approve' || isApproverFiltered || approverProjectCodes.length > 0 || isDual;
+          const isHolidayOrWeekend = isHolidayOrWeekendRecord(r);
 
-          const verifiedBy = (resolvedMode === 'verify' || isUserFocal)
+          const verifiedBy = (isHolidayOrWeekend || resolvedMode === 'verify' || isUserFocal)
             ? (r.verified_by || userData?.email || dbFields.verified_by || null)
             : (r.verified_by || dbFields.verified_by || null);
 
-          const approvedBy = (isUserApprover)
+          const approvedBy = (isHolidayOrWeekend || isUserApprover)
             ? (r.approved_by || userData?.email || null)
             : (r.approved_by || null);
 
@@ -3037,7 +3051,7 @@ export default function TimesheetFinalizer({
               : ((r.remarks || '').trim() || null),
             status: r.status || null,
             last_updated: new Date().toISOString(),
-            approval: approvalVal
+            approval: isHolidayOrWeekend ? true : approvalVal
           };
         });
 
