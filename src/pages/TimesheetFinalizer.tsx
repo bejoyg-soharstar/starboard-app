@@ -183,14 +183,20 @@ interface TimesheetRow {
   lastLocalEdit?: number;
   created_at?: string | null;
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> 8413e22ce60b00315bfdfa37fea9b8e73cb87e4e
 const isHolidayOrWeekendRecord = (row: TimesheetRow): boolean => {
   const status = row.status?.trim().toLowerCase();
   const remarks = row.remarks?.trim().toLowerCase();
   return (status === 'holiday' && remarks === 'holiday') ||
     (status === 'weekend' && remarks === 'weekend');
 };
+<<<<<<< HEAD
 
+=======
+>>>>>>> 8413e22ce60b00315bfdfa37fea9b8e73cb87e4e
 type SourceFilter = 'ALL' | 'MANUAL' | 'LEAVE_LOG' | 'DEVICE' | 'NO_SOURCE';
 
 const getYesterdayString = () => {
@@ -512,7 +518,10 @@ const TimesheetRowComponent = memo(({
 
   const hasNoRedBorders = useMemo(() => {
     const isHolidayOrWeekend = isHolidayOrWeekendRecord(row);
+<<<<<<< HEAD
 
+=======
+>>>>>>> 8413e22ce60b00315bfdfa37fea9b8e73cb87e4e
     // 1. Status check
     const isStatusRed = !row.status || row.status === 'no status';
     if (isStatusRed) return false;
@@ -825,6 +834,8 @@ const TimesheetRowComponent = memo(({
                     <SelectItem value="Casual Leave" className="text-xs cursor-pointer focus:bg-slate-50">Casual Leave</SelectItem>
                     <SelectItem value="Emergency Leave" className="text-xs cursor-pointer focus:bg-slate-50">Emergency Leave</SelectItem>
                     <SelectItem value="No Device" className="text-xs cursor-pointer focus:bg-slate-50">No Device</SelectItem>
+                    <SelectItem value="Holiday" className="text-xs cursor-pointer focus:bg-slate-50">Holiday</SelectItem>
+                    <SelectItem value="Weekend" className="text-xs cursor-pointer focus:bg-slate-50">Weekend</SelectItem>
                   </>
                 )}
 
@@ -2101,7 +2112,11 @@ export default function TimesheetFinalizer({
     if (!currentRow) return;
 
     const isMachineLoggedComplete = !!currentRow.original_in_punch && !!currentRow.original_out_punch;
+<<<<<<< HEAD
     const isRowVerified = isHolidayOrWeekendRecord(currentRow) || currentRow.isVerified || !!currentRow.verified_by || isMachineLoggedComplete || resolvedMode === 'approve';
+=======
+    const isRowVerified =  isHolidayOrWeekendRecord(currentRow) || currentRow.isVerified || !!currentRow.verified_by || isMachineLoggedComplete || resolvedMode === 'approve';
+>>>>>>> 8413e22ce60b00315bfdfa37fea9b8e73cb87e4e
     if (!isRowVerified) {
       toast.error(`Cannot approve ${currentRow.employee_name}. Timesheet must be verified first.`);
       return;
@@ -2218,7 +2233,12 @@ export default function TimesheetFinalizer({
     const checkRowValidity = (r: TimesheetRow): boolean => {
       // 1. Status check
       if (!r.status || r.status === 'no status') return false;
+<<<<<<< HEAD
       if (r.status === 'holiday' || r.status === 'weekend') {
+=======
+      if (r.status === 'holiday' || r.status === 'weekend')
+      {
+>>>>>>> 8413e22ce60b00315bfdfa37fea9b8e73cb87e4e
         return isHolidayOrWeekendRecord(r);
       }
       // 2. Project & Punch check (only when status is not absent/no status)
@@ -2999,6 +3019,10 @@ export default function TimesheetFinalizer({
       const hasMissingPunchTimes = Object.values(rows).some(r => {
         return !isHolidayOrWeekendRecord(r) &&
           (r.status === 'present' || r.status === 'present with OT') && (!r.punch_in || !r.punch_out);
+<<<<<<< HEAD
+=======
+        //return (r.status === 'present' || r.status === 'present with OT') && (!r.punch_in || !r.punch_out);
+>>>>>>> 8413e22ce60b00315bfdfa37fea9b8e73cb87e4e
       });
 
       if (hasMissingPunchTimes) {
@@ -3051,6 +3075,10 @@ export default function TimesheetFinalizer({
               : ((r.remarks || '').trim() || null),
             status: r.status || null,
             last_updated: new Date().toISOString(),
+<<<<<<< HEAD
+=======
+            //approval: approvalVal
+>>>>>>> 8413e22ce60b00315bfdfa37fea9b8e73cb87e4e
             approval: isHolidayOrWeekend ? true : approvalVal
           };
         });
